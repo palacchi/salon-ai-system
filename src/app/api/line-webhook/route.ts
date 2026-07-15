@@ -19,6 +19,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 const GENERATION_TRIGGER = "ok";
+const APPROVE_TRIGGER = "承認";
+const REJECT_TRIGGER = "却下";
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
@@ -98,6 +100,25 @@ async function handleTextMessage(event: TextMessageEvent) {
 
   if (!lineUserId) return;
 
+  const { data: pendingApproval, error: pendingError } = await supabase
+    .from("posts")
+    .select("id")
+    .eq("line_user_id", lineUserId)
+    .in("status", ["draft", "needs_review"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (pendingError) {
+    console.error("承認待ち投稿の取得に失敗しました", pendingError.message);
+    return;
+  }
+
+  if (pendingApproval) {
+    await handleApprovalReply(event, pendingApproval.id, text, lineUserId);
+    return;
+  }
+
   const { data: post, error: findError } = await supabase
     .from("posts")
     .select("id, image_url, notes")
@@ -172,19 +193,109 @@ async function handleTextMessage(event: TextMessageEvent) {
       return;
     }
 
+    const summary = formatPostSummary(generated);
     if (checkResult.flagged) {
       await pushMessage(
         lineUserId,
-        `文章ができましたが、確認が必要な表現があります。\n${checkResult.issues.join("\n")}\n内容を確認・修正してください。`
+        `文章ができましたが、確認が必要な表現があります。\n${checkResult.issues.join("\n")}\n\n${summary}\n\n内容を確認し、問題なければ「承認」、やり直す場合は「却下」と送ってください。`
       );
     } else {
-      await pushMessage(lineUserId, "スタイル投稿の文章ができました。内容を確認してください。");
+      await pushMessage(
+        lineUserId,
+        `スタイル投稿の文章ができました。\n\n${summary}\n\n内容を確認し、問題なければ「承認」、やり直す場合は「却下」と送ってください。`
+      );
     }
   } catch (err) {
     console.error("AI生成に失敗しました", err);
     await supabase.from("posts").update({ status: "collecting" }).eq("id", post.id);
     await pushMessage(lineUserId, "文章の作成中にエラーが発生しました。もう一度「OK」と送ってください。");
   }
+}
+
+async function handleApprovalReply(
+  event: TextMessageEvent,
+  postId: string,
+  text: string,
+  lineUserId: string
+) {
+  const trimmed = text.trim();
+
+  if (trimmed === APPROVE_TRIGGER) {
+    const { error: updateError } = await supabase
+      .from("posts")
+      .update({ status: "approved" })
+      .eq("id", postId);
+
+    if (updateError) {
+      console.error("承認の保存に失敗しました", updateError.message);
+      return;
+    }
+
+    await supabase.from("approval_logs").insert({
+      target_type: "post",
+      target_id: postId,
+      action: "approved",
+      approved_by: lineUserId,
+    });
+
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, "承認しました。ありがとうございます。");
+    }
+    return;
+  }
+
+  if (trimmed === REJECT_TRIGGER) {
+    const { error: updateError } = await supabase
+      .from("posts")
+      .update({ status: "rejected" })
+      .eq("id", postId);
+
+    if (updateError) {
+      console.error("却下の保存に失敗しました", updateError.message);
+      return;
+    }
+
+    await supabase.from("approval_logs").insert({
+      target_type: "post",
+      target_id: postId,
+      action: "rejected",
+      approved_by: lineUserId,
+    });
+
+    if (event.replyToken) {
+      await replyMessage(
+        event.replyToken,
+        "却下しました。やり直す場合は、新しいスタイル写真から送ってください。"
+      );
+    }
+    return;
+  }
+
+  if (event.replyToken) {
+    await replyMessage(
+      event.replyToken,
+      "内容を確認し、問題なければ「承認」、やり直す場合は「却下」と送ってください。"
+    );
+  }
+}
+
+function formatPostSummary(content: GeneratedContent): string {
+  const price = content.price != null ? `${content.price}円` : "未入力";
+  return [
+    `■ブログタイトル\n${content.blog_title}`,
+    `■ブログ本文\n${content.blog_body}`,
+    `■スタイル名\n${content.style_name}`,
+    `■スタイル説明\n${content.style_description}`,
+    `■おすすめ年代\n${content.recommended_age}`,
+    `■髪の長さ\n${content.hair_length}`,
+    `■カラー\n${content.hair_color}`,
+    `■メニュー\n${content.menu_text}`,
+    `■料金\n${price}`,
+    `■スタイリング方法\n${content.styling_method}`,
+    `■Instagram投稿文\n${content.instagram_text}`,
+    `■Google投稿文\n${content.google_text}`,
+    `■LINE配信文\n${content.line_text}`,
+  ].join("\n\n");
 }
 
 const GENERATED_FIELDS = [
