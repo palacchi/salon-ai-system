@@ -100,30 +100,12 @@ async function handleTextMessage(event: TextMessageEvent) {
 
   if (!lineUserId) return;
 
-  const { data: pendingApproval, error: pendingError } = await supabase
-    .from("posts")
-    .select("id")
-    .eq("line_user_id", lineUserId)
-    .in("status", ["draft", "needs_review"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (pendingError) {
-    console.error("承認待ち投稿の取得に失敗しました", pendingError.message);
-    return;
-  }
-
-  if (pendingApproval) {
-    await handleApprovalReply(event, pendingApproval.id, text, lineUserId);
-    return;
-  }
-
+  // その人が送った一番新しい投稿を1件だけ見て、その状態に応じて処理を振り分ける。
+  // (古い「承認待ち」が残っていても、新しい写真の会話を優先するため)
   const { data: post, error: findError } = await supabase
     .from("posts")
-    .select("id, image_url, notes")
+    .select("id, image_url, notes, status")
     .eq("line_user_id", lineUserId)
-    .eq("status", "collecting")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -136,6 +118,25 @@ async function handleTextMessage(event: TextMessageEvent) {
   if (!post) {
     if (event.replyToken) {
       await replyMessage(event.replyToken, "先にスタイル写真を送ってください。");
+    }
+    return;
+  }
+
+  if (post.status === "draft" || post.status === "needs_review") {
+    await handleApprovalReply(event, post.id, text, lineUserId);
+    return;
+  }
+
+  if (post.status === "generating") {
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, "現在作成中です。少々お待ちください。");
+    }
+    return;
+  }
+
+  if (post.status !== "collecting") {
+    if (event.replyToken) {
+      await replyMessage(event.replyToken, "先に新しいスタイル写真を送ってください。");
     }
     return;
   }
