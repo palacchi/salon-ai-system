@@ -34,7 +34,7 @@ const CHECK_FIELDS = [
   "line_text",
 ] as const;
 
-export type ContentCheckTarget = Record<string, string | number>;
+export type ContentCheckTarget = Record<string, string | number | null>;
 
 export type ContentCheckResult = {
   flagged: boolean;

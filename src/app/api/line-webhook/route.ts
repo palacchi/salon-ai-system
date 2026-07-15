@@ -203,7 +203,7 @@ const GENERATED_FIELDS = [
   "line_text",
 ] as const;
 
-type GeneratedContent = Record<(typeof GENERATED_FIELDS)[number], string | number>;
+type GeneratedContent = Record<(typeof GENERATED_FIELDS)[number], string | number | null>;
 
 async function generatePostContent(
   imageUrl: string,
@@ -244,7 +244,10 @@ ${notes && notes.trim() ? notes : "(メモなし)"}
       hair_length: { type: "string", description: "例: ショート、ボブ、ミディアム、ロング" },
       hair_color: { type: "string", description: "カラーの説明" },
       menu_text: { type: "string", description: "メニュー名。メモに無ければ「未入力」" },
-      price: { type: "string", description: "料金。例: 12,000円。メモに無ければ「未入力」" },
+      price: {
+        type: ["integer", "null"],
+        description: "料金(円)。カンマや「円」は付けず数字のみ。例: 12000。一覧に一致するものが無ければnull",
+      },
       styling_method: { type: "string", description: "おうちでのスタイリング方法" },
       instagram_text: { type: "string", description: "ハッシュタグを含むInstagram投稿文" },
       google_text: { type: "string", description: "Google Business Profileへの投稿文" },
