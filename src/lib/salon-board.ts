@@ -3,6 +3,7 @@ import { chromium as playwrightChromium, type Page } from "playwright-core";
 
 const SALON_BOARD_LOGIN_ID = process.env.SALON_BOARD_LOGIN_ID!;
 const SALON_BOARD_PASSWORD = process.env.SALON_BOARD_PASSWORD!;
+const BROWSERLESS_API_KEY = process.env.BROWSERLESS_API_KEY;
 
 const NISHINOMIYA_SALON_NAME = "髪質改善サロン Palacchi 西宮店【パラッチ】";
 
@@ -56,6 +57,11 @@ async function fillFieldAfterLabel(page: Page, labelText: string, tag: "textarea
 }
 
 async function launchBrowser() {
+  if (BROWSERLESS_API_KEY) {
+    return playwrightChromium.connectOverCDP(
+      `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}`
+    );
+  }
   return playwrightChromium.launch({
     args: chromium.args,
     executablePath: await chromium.executablePath(),
