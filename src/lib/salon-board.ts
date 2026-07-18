@@ -59,7 +59,7 @@ async function fillFieldAfterLabel(page: Page, labelText: string, tag: "textarea
 async function launchBrowser() {
   if (BROWSERLESS_API_KEY) {
     return playwrightChromium.connectOverCDP(
-      `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}`
+      `wss://production-sfo.browserless.io?token=${BROWSERLESS_API_KEY}&proxy=residential&proxyCountry=jp&proxySticky=true&proxyLocaleMatch=true`
     );
   }
   return playwrightChromium.launch({
