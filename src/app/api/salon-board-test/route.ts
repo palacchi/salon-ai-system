@@ -10,6 +10,31 @@ const TEST_SECRET = process.env.LINE_CHANNEL_SECRET!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+export async function GET(req: NextRequest) {
+  if (req.headers.get("x-test-secret") !== TEST_SECRET) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const startedAt = Date.now();
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch("https://salonboard.com/login/", { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return NextResponse.json({
+      ok: true,
+      status: res.status,
+      elapsedMs: Date.now() - startedAt,
+    });
+  } catch (err) {
+    return NextResponse.json({
+      ok: false,
+      error: err instanceof Error ? err.message : "unknown error",
+      elapsedMs: Date.now() - startedAt,
+    });
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (req.headers.get("x-test-secret") !== TEST_SECRET) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
