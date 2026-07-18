@@ -79,7 +79,7 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
   try {
     const imageResPromise = fetch(input.imageUrl);
 
-    await page.goto("https://salonboard.com/login/", { waitUntil: "domcontentloaded" });
+    await page.goto("https://salonboard.com/login/", { waitUntil: "domcontentloaded", timeout: 20000 });
     log("login page loaded");
     await page.locator('input[type="text"]').first().fill(SALON_BOARD_LOGIN_ID);
     await page.locator('input[type="password"]').first().fill(SALON_BOARD_PASSWORD);
