@@ -176,7 +176,17 @@ async function handleTextMessage(event: TextMessageEvent) {
       .select("name, price")
       .order("created_at", { ascending: true });
 
-    const generated = await generatePostContent(post.image_url!, post.notes, menuItems ?? []);
+    const { data: staffItems } = await supabase
+      .from("staff")
+      .select("name")
+      .order("created_at", { ascending: true });
+
+    const generated = await generatePostContent(
+      post.image_url!,
+      post.notes,
+      menuItems ?? [],
+      staffItems ?? []
+    );
     const checkResult = checkGeneratedContent(generated);
 
     const { error: updateError } = await supabase
@@ -285,10 +295,12 @@ function formatPostSummary(content: GeneratedContent): string {
   return [
     `■ブログタイトル\n${content.blog_title}`,
     `■ブログ本文\n${content.blog_body}`,
+    `■担当スタイリスト\n${content.stylist_name}`,
     `■スタイル名\n${content.style_name}`,
-    `■スタイル説明\n${content.style_description}`,
+    `■コメント\n${content.style_description}`,
+    `■カテゴリ\n${content.category}`,
+    `■長さ\n${content.hair_length}`,
     `■おすすめ年代\n${content.recommended_age}`,
-    `■髪の長さ\n${content.hair_length}`,
     `■カラー\n${content.hair_color}`,
     `■メニュー\n${content.menu_text}`,
     `■料金\n${price}`,
@@ -302,10 +314,12 @@ function formatPostSummary(content: GeneratedContent): string {
 const GENERATED_FIELDS = [
   "blog_title",
   "blog_body",
+  "stylist_name",
   "style_name",
   "style_description",
-  "recommended_age",
+  "category",
   "hair_length",
+  "recommended_age",
   "hair_color",
   "menu_text",
   "price",
@@ -320,45 +334,75 @@ type GeneratedContent = Record<(typeof GENERATED_FIELDS)[number], string | numbe
 async function generatePostContent(
   imageUrl: string,
   notes: string | null,
-  menuItems: { name: string; price: number | null }[]
+  menuItems: { name: string; price: number | null }[],
+  staffItems: { name: string }[]
 ): Promise<GeneratedContent> {
   const systemPrompt = `あなたは美容室のSNS・ブログ運用を担当する、経験豊富な人間のコピーライターです。
 写真と担当者からのメモをもとに、実際にお客様が読んで来店したくなるような、自然で温かみのある文章を作成してください。
+生成した内容はSALON BOARD(HOT PEPPER Beautyのサロン管理画面)にそのまま登録するため、下記の文字数制限・選択肢を必ず守ってください。
 
 必ず守るルール:
 - 機械的・定型的な言い回しを避け、人間が書いたような自然な日本語にする
-- 絵文字(😊✨💇‍♀️など)と顔文字((^^)/、(◍•ᴗ•◍)、(*'▽')など)の両方を、各文章に最低1つずつは使い、楽しく親しみやすい雰囲気を出す。ただし使いすぎず、丁寧な言葉遣いは崩さない
+- 絵文字(😊✨💇‍♀️など)と顔文字((^^)/、(◍•ᴗ•◍)、(*'▽')など)の両方を、blog_body・style_description・instagram_text・google_text・line_textの各文章に最低1つずつは使い、楽しく親しみやすい雰囲気を出す。ただし使いすぎず、丁寧な言葉遣いは崩さない。style_name・category・hair_length・recommended_age・menu_text・stylist_nameには絵文字・顔文字を付けない
 - Instagram投稿文・LINE配信文は特に絵文字・顔文字を多めに、明るく楽しい雰囲気にする
 - ブログ本文・Google投稿文は、楽しさを出しつつも、お店の説明として丁寧で読みやすい文章にする
 - 誇大表現(「必ず」「絶対」「日本一」など)は使わない
 - 医療的な効果効能を断定しない(「発毛する」「薄毛が治る」など)
 - メニュー名・料金は、下に渡す「実際のメニュー一覧」の中から、写真とメモに最も近いものを選んで使う。一覧に無い名前や料金を勝手に作らない
-- 一覧の中に近いものが無い場合は、そのフィールドに「未入力」と書く
+- 一覧の中に近いものが無い場合は、menu_textに「未入力」と書き、priceはnullにする
+- スタイリスト名は、下に渡す「実際のスタイリスト一覧」の中から、メモに書かれた担当者名に最も近いものを1つ選ぶ。メモに担当者名が無い、または一覧の中に該当者がいない場合は「PALACCHI スタッフ」を選ぶ
+- style_nameは30文字以内で簡潔に
+- style_descriptionは120文字以内
+- menu_textは50文字以内
+- categoryは写真から判断してレディースかメンズのどちらか1つを選ぶ
+- hair_lengthは、categoryがレディースなら「ベリーショート/ショート/ミディアム/セミロング/ロング/ヘアセット/ミセス」の中から、メンズなら「ボウズ/ベリーショート/ショート/ミディアム/ロング/その他」の中から、写真に最も近いものを1つ選ぶ
+- recommended_ageは、写真から年代が判断できれば「キッズ/10代/20代/30代/40代/50代/60代以上」の中から1つ選び、判断できなければ「設定しない」にする
 - 写真から読み取れないことを断定的に書かない`;
 
   const menuList = menuItems.length
     ? menuItems.map((m) => `- ${m.name}(${m.price ?? "料金未設定"}円)`).join("\n")
     : "(メニュー一覧が登録されていません)";
 
+  const staffList = staffItems.length
+    ? staffItems.map((s) => `- ${s.name}`).join("\n")
+    : "(スタイリスト一覧が登録されていません)";
+
   const userText = `【実際のメニュー一覧】
 ${menuList}
+
+【実際のスタイリスト一覧】
+${staffList}
 
 【担当者からのメモ】
 ${notes && notes.trim() ? notes : "(メモなし)"}
 
-上の写真・メモ・メニュー一覧をもとに、次の13項目をすべて日本語で作成してください。`;
+上の写真・メモ・メニュー一覧・スタイリスト一覧をもとに、次の${GENERATED_FIELDS.length}項目をすべて日本語で作成してください。`;
 
   const schema = {
     type: "object" as const,
     properties: {
       blog_title: { type: "string", description: "HOT PEPPER Beautyのブログタイトル。30〜40文字程度" },
       blog_body: { type: "string", description: "HOT PEPPER Beautyのブログ本文。300〜600文字程度の自然な文章" },
-      style_name: { type: "string", description: "スタイル名" },
-      style_description: { type: "string", description: "スタイルの説明。100〜200文字程度" },
-      recommended_age: { type: "string", description: "例: 20代〜30代" },
-      hair_length: { type: "string", description: "例: ショート、ボブ、ミディアム、ロング" },
+      stylist_name: {
+        type: "string",
+        enum: staffItems.length ? staffItems.map((s) => s.name) : ["PALACCHI スタッフ"],
+        description: "実際のスタイリスト一覧の中から1つ選ぶ",
+      },
+      style_name: { type: "string", maxLength: 30, description: "スタイル名。30文字以内" },
+      style_description: { type: "string", maxLength: 120, description: "スタイルの説明(コメント)。120文字以内" },
+      category: { type: "string", enum: ["レディース", "メンズ"], description: "写真から判断する" },
+      hair_length: {
+        type: "string",
+        enum: ["ベリーショート", "ショート", "ミディアム", "セミロング", "ロング", "ヘアセット", "ミセス", "ボウズ", "その他"],
+        description: "categoryに応じた選択肢の中から1つ選ぶ",
+      },
+      recommended_age: {
+        type: "string",
+        enum: ["設定しない", "キッズ", "10代", "20代", "30代", "40代", "50代", "60代以上"],
+        description: "写真から判断できなければ「設定しない」",
+      },
       hair_color: { type: "string", description: "カラーの説明" },
-      menu_text: { type: "string", description: "メニュー名。メモに無ければ「未入力」" },
+      menu_text: { type: "string", maxLength: 50, description: "メニュー名。50文字以内。メモに無ければ「未入力」" },
       price: {
         type: ["integer", "null"],
         description: "料金(円)。カンマや「円」は付けず数字のみ。例: 12000。一覧に一致するものが無ければnull",

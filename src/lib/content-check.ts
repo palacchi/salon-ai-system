@@ -41,8 +41,33 @@ export type ContentCheckResult = {
   issues: string[];
 };
 
+const FEMALE_HAIR_LENGTHS = ["ベリーショート", "ショート", "ミディアム", "セミロング", "ロング", "ヘアセット", "ミセス"];
+const MALE_HAIR_LENGTHS = ["ボウズ", "ベリーショート", "ショート", "ミディアム", "ロング", "その他"];
+
+const SALON_BOARD_LENGTH_LIMITS: Record<string, number> = {
+  style_name: 30,
+  style_description: 120,
+  menu_text: 50,
+};
+
 export function checkGeneratedContent(content: ContentCheckTarget): ContentCheckResult {
   const issues: string[] = [];
+
+  for (const [field, limit] of Object.entries(SALON_BOARD_LENGTH_LIMITS)) {
+    const value = content[field];
+    if (typeof value === "string" && value.length > limit) {
+      issues.push(`${field}がSALON BOARDの文字数上限(${limit}文字)を超えています(現在${value.length}文字)`);
+    }
+  }
+
+  const category = content.category;
+  const hairLength = content.hair_length;
+  if (typeof category === "string" && typeof hairLength === "string") {
+    const validLengths = category === "メンズ" ? MALE_HAIR_LENGTHS : FEMALE_HAIR_LENGTHS;
+    if (!validLengths.includes(hairLength)) {
+      issues.push(`categoryが「${category}」なのにhair_lengthが「${hairLength}」で、SALON BOARDの選択肢と合っていません`);
+    }
+  }
 
   for (const field of CHECK_FIELDS) {
     const value = content[field];
