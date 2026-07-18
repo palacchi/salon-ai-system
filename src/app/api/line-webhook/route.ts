@@ -356,7 +356,7 @@ async function generatePostContent(
 - menu_textは50文字以内
 - categoryは写真から判断してレディースかメンズのどちらか1つを選ぶ
 - hair_lengthは、categoryがレディースなら「ベリーショート/ショート/ミディアム/セミロング/ロング/ヘアセット/ミセス」の中から、メンズなら「ボウズ/ベリーショート/ショート/ミディアム/ロング/その他」の中から、写真に最も近いものを1つ選ぶ
-- recommended_ageは、写真から年代が判断できれば「キッズ/10代/20代/30代/40代/50代/60代以上」の中から1つ選び、判断できなければ「設定しない」にする
+- recommended_ageは特定の年代に絞らず、常に「設定しない」にする
 - 写真から読み取れないことを断定的に書かない`;
 
   const menuList = menuItems.length
@@ -398,8 +398,8 @@ ${notes && notes.trim() ? notes : "(メモなし)"}
       },
       recommended_age: {
         type: "string",
-        enum: ["設定しない", "キッズ", "10代", "20代", "30代", "40代", "50代", "60代以上"],
-        description: "写真から判断できなければ「設定しない」",
+        enum: ["設定しない"],
+        description: "常に「設定しない」",
       },
       hair_color: { type: "string", description: "カラーの説明" },
       menu_text: { type: "string", maxLength: 50, description: "メニュー名。50文字以内。メモに無ければ「未入力」" },
