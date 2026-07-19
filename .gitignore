@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+local-agent/node_modules
+local-agent/*.png
 /.pnp
 .pnp.*
 .yarn/*

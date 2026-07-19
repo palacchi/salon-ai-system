@@ -1,0 +1,12 @@
+{
+  "name": "salon-board-local-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test-connection": "node test-connection.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}
