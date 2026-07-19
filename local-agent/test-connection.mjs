@@ -18,8 +18,8 @@ const env = Object.fromEntries(
 );
 
 async function main() {
-  console.log("ブラウザを起動しています...");
-  const browser = await chromium.launch({ headless: true });
+  console.log("ブラウザを起動しています(画面表示あり)...");
+  const browser = await chromium.launch({ headless: false });
   const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 
   try {
