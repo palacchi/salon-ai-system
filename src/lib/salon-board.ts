@@ -113,7 +113,7 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page.locator("#FRONT_IMG_ID_IMG").click({ timeout: 45000 });
+    await page.locator("#FRONT_IMG_ID_IMG").dispatchEvent("click");
     const fileInput = page.locator('input[type="file"]');
     await fileInput.waitFor({ state: "attached" });
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });

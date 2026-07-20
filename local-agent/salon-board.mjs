@@ -80,7 +80,7 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page.locator("#FRONT_IMG_ID_IMG").click({ timeout: 45000 });
+    await page.locator("#FRONT_IMG_ID_IMG").dispatchEvent("click");
     await page.waitForTimeout(1000);
     await page.screenshot({ path: "debug-after-click.png" });
     log("debug screenshot taken after upload click");
