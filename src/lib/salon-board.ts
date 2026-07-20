@@ -104,7 +104,7 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     log("style list loaded");
     await page.locator('img[alt="スタイル新規追加"]').first().click();
     await page.waitForSelector("text=スタイル掲載情報編集");
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(4000);
     log("new style form loaded");
 
     const imageRes = await imageResPromise;
@@ -113,7 +113,9 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page.locator("#FRONT_IMG_ID_IMG").dispatchEvent("click");
+    const uploadImg = page.locator("#FRONT_IMG_ID_IMG");
+    await uploadImg.scrollIntoViewIfNeeded();
+    await uploadImg.click({ force: true });
     const fileInput = page.locator('input[type="file"]');
     await fileInput.waitFor({ state: "attached" });
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
