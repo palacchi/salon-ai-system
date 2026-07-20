@@ -102,7 +102,7 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
 
     await page.goto("https://salonboard.com/CNB/draft/styleList/", { waitUntil: "domcontentloaded" });
     log("style list loaded");
-    await page.locator('img[alt="スタイル新規追加"]').click();
+    await page.locator('img[alt="スタイル新規追加"]').first().click();
     await page.waitForSelector("text=スタイル掲載情報編集");
     log("new style form loaded");
 
