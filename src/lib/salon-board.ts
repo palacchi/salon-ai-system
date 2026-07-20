@@ -112,11 +112,15 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
+    await page.getByText("画像をアップロードする").first().click();
+    await page.waitForSelector("text=ファイルを選択");
     const [fileChooser] = await Promise.all([
       page.waitForEvent("filechooser"),
-      page.getByText("画像をアップロードする").first().click(),
+      page.getByText("ファイルを選択").click(),
     ]);
     await fileChooser.setFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
+    await page.waitForTimeout(1000);
+    await page.getByRole("button", { name: "登録する" }).click();
     await page.waitForTimeout(1500);
     log("image uploaded");
 
