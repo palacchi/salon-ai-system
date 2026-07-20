@@ -113,14 +113,17 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    const uploadImg = page.locator("#FRONT_IMG_ID_IMG");
-    await uploadImg.scrollIntoViewIfNeeded();
-    await uploadImg.click({ force: true });
+    await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG")!.click());
     const fileInput = page.locator('input[type="file"]');
     await fileInput.waitFor({ state: "attached" });
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     await page.waitForTimeout(1000);
-    await page.getByRole("button", { name: "登録する" }).click();
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll("a,button")).find(
+        (el) => el.textContent?.trim() === "登録する" && (el as HTMLElement).offsetParent !== null
+      ) as HTMLElement | undefined;
+      btn?.click();
+    });
     await page.waitForTimeout(1500);
     log("image uploaded");
 
@@ -139,14 +142,18 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     log("basic fields filled");
 
     if (input.couponId) {
-      await page.locator('img[alt="クーポン選択"]').click();
-      await page.waitForSelector(`input[type="radio"][value="${input.couponId}"]`);
-      await page.locator(`input[type="radio"][value="${input.couponId}"]`).click();
-      const confirmButton = page.getByRole("button", { name: /設定/ }).or(page.getByRole("link", { name: /設定/ }));
-      if ((await confirmButton.count()) > 0) {
-        await confirmButton.first().click();
-        await page.waitForTimeout(300);
-      }
+      await page.evaluate(() => document.querySelector<HTMLElement>('img[alt="クーポン選択"]')!.click());
+      await page.waitForSelector(`input[type="radio"][value="${input.couponId}"]`, { state: "attached" });
+      await page.evaluate((couponId) => {
+        const radio = document.querySelector<HTMLInputElement>(`input[type="radio"][value="${couponId}"]`)!;
+        const checkTable = radio.closest("label")!.querySelector<HTMLElement>(".jsc_SB_modal_table_check")!;
+        checkTable.click();
+      }, input.couponId);
+      await page.waitForTimeout(300);
+      await page.evaluate(() => {
+        document.querySelector<HTMLElement>(".jsc_SB_modal_setting_btn")?.click();
+      });
+      await page.waitForTimeout(500);
       log("coupon selected");
     }
 
