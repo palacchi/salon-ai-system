@@ -71,6 +71,7 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     log("style list loaded");
     await page.locator('img[alt="スタイル新規追加"]').first().click();
     await page.waitForSelector("text=スタイル掲載情報編集");
+    await page.waitForTimeout(2000);
     log("new style form loaded");
 
     const imageRes = await imageResPromise;
@@ -79,7 +80,7 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page.getByText("画像をアップロードする").first().click();
+    await page.getByText("画像をアップロードする").first().click({ timeout: 45000 });
     await page.waitForSelector("text=ファイルを選択");
     const [fileChooser] = await Promise.all([
       page.waitForEvent("filechooser"),
