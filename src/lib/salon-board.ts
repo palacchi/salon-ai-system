@@ -112,10 +112,11 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page
-      .locator('input[type="file"]')
-      .first()
-      .setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent("filechooser"),
+      page.getByText("画像をアップロードする").first().click(),
+    ]);
+    await fileChooser.setFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     await page.waitForTimeout(1500);
     log("image uploaded");
 
