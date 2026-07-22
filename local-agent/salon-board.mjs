@@ -114,7 +114,15 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     log("file set on input, waiting for client-side preview to settle");
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
+    await page.screenshot({ path: "debug-before-register.png", fullPage: true });
+    const preRegisterDiag = await page.evaluate(() => {
+      const modalBody = document.getElementById("imageUploaderModalBody");
+      return {
+        modalBodyHTML: modalBody ? modalBody.innerHTML.slice(0, 1500) : "N/A",
+      };
+    });
+    log(`pre-register modal state: ${JSON.stringify(preRegisterDiag)}`);
 
     const errorDialogText = await page.evaluate(() => {
       const el = Array.from(document.querySelectorAll("*")).find(
