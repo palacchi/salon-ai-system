@@ -84,6 +84,17 @@ export async function fillSalonBoardStyleForm(input, credentials) {
       timeout: 30000,
     });
     log("upload placeholder image finished loading");
+    const diag = await page.evaluate(() => {
+      const el = document.getElementById("FRONT_IMG_ID_IMG");
+      return {
+        elementExists: !!el,
+        jQueryLoaded: typeof window.jQuery !== "undefined",
+        elementClassList: el ? el.className : "N/A",
+        elementTag: el ? el.tagName : "N/A",
+        fileInputCountBeforeClick: document.querySelectorAll('input[type="file"]').length,
+      };
+    });
+    log(`diagnostics: ${JSON.stringify(diag)}`);
     const fileInput = page.locator('input[type="file"]');
     let uploadModalOpen = false;
     for (let attempt = 0; attempt < 4 && !uploadModalOpen; attempt++) {
