@@ -51,6 +51,16 @@ export async function fillSalonBoardStyleForm(input, credentials) {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => false });
   });
+  page.on("request", (req) => {
+    if (req.url().includes("imgUpload") || req.url().includes("imgreg")) {
+      console.log(`[network] request: ${req.method()} ${req.url()}`);
+    }
+  });
+  page.on("response", (res) => {
+    if (res.url().includes("imgUpload") || res.url().includes("imgreg")) {
+      console.log(`[network] response: ${res.status()} ${res.url()}`);
+    }
+  });
 
   try {
     const imageResPromise = fetch(input.imageUrl);
@@ -113,16 +123,9 @@ export async function fillSalonBoardStyleForm(input, credentials) {
       return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
-    log("file set on input, waiting for client-side preview to settle");
-    await page.waitForTimeout(5000);
+    log("file set on input, waiting for upload network activity");
+    await page.waitForTimeout(8000);
     await page.screenshot({ path: "debug-before-register.png", fullPage: true });
-    const preRegisterDiag = await page.evaluate(() => {
-      const modalBody = document.getElementById("imageUploaderModalBody");
-      return {
-        modalBodyHTML: modalBody ? modalBody.innerHTML.slice(0, 1500) : "N/A",
-      };
-    });
-    log(`pre-register modal state: ${JSON.stringify(preRegisterDiag)}`);
 
     const errorDialogText = await page.evaluate(() => {
       const el = Array.from(document.querySelectorAll("*")).find(
