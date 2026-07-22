@@ -113,7 +113,24 @@ export async function fillSalonBoardStyleForm(input, credentials) {
       return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
-    await page.waitForTimeout(1500);
+    log("file set on input, waiting for client-side preview to settle");
+    await page.waitForTimeout(3000);
+
+    const errorDialogText = await page.evaluate(() => {
+      const el = Array.from(document.querySelectorAll("*")).find(
+        (e) => e.children.length === 0 && e.textContent?.includes("通信に失敗しました")
+      );
+      return el ? el.textContent.trim() : null;
+    });
+    if (errorDialogText) {
+      log(`error dialog detected before register click: ${errorDialogText}`);
+      await page.evaluate(() => {
+        const okBtn = Array.from(document.querySelectorAll("button,a")).find((e) => e.textContent.trim() === "OK");
+        okBtn?.click();
+      });
+      await page.waitForTimeout(500);
+    }
+
     const registerBtn = page.getByRole("button", { name: "登録する" });
     const registerBtnHandle = await registerBtn.elementHandle();
     if (registerBtnHandle) {
@@ -125,7 +142,21 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {
       log("overlay still visible after 15s wait");
     });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
+
+    const uploadResultDiag = await page.evaluate(() => {
+      const idSpan = document.getElementById("FRONT_IMG_ID_ID");
+      const imgEl = document.getElementById("FRONT_IMG_ID_IMG");
+      const errEl = Array.from(document.querySelectorAll("*")).find(
+        (e) => e.children.length === 0 && e.textContent?.includes("通信に失敗しました")
+      );
+      return {
+        imageId: idSpan ? idSpan.textContent.trim() : null,
+        imgSrc: imgEl ? imgEl.src : null,
+        errorAfterRegister: errEl ? errEl.textContent.trim() : null,
+      };
+    });
+    log(`upload result diagnostics: ${JSON.stringify(uploadResultDiag)}`);
     await page.screenshot({ path: "debug-after-register.png", fullPage: true });
     log("image uploaded");
 
