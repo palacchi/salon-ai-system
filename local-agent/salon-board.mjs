@@ -80,9 +80,15 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
-    await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG").click());
     const fileInput = page.locator('input[type="file"]');
-    await fileInput.waitFor({ state: "attached", timeout: 10000 });
+    await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG").click());
+    try {
+      await fileInput.waitFor({ state: "attached", timeout: 8000 });
+    } catch {
+      log("upload modal did not open on first click, retrying");
+      await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG").click());
+      await fileInput.waitFor({ state: "attached", timeout: 20000 });
+    }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     await page.waitForTimeout(1000);
     await page.evaluate(() => {
