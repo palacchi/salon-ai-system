@@ -80,14 +80,23 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
     log("image downloaded");
+    await page.waitForFunction(() => document.getElementById("FRONT_IMG_ID_IMG")?.complete === true, {
+      timeout: 30000,
+    });
+    log("upload placeholder image finished loading");
     const fileInput = page.locator('input[type="file"]');
-    await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG").click());
-    try {
-      await fileInput.waitFor({ state: "attached", timeout: 8000 });
-    } catch {
-      log("upload modal did not open on first click, retrying");
+    let uploadModalOpen = false;
+    for (let attempt = 0; attempt < 4 && !uploadModalOpen; attempt++) {
       await page.evaluate(() => document.getElementById("FRONT_IMG_ID_IMG").click());
-      await fileInput.waitFor({ state: "attached", timeout: 20000 });
+      try {
+        await fileInput.waitFor({ state: "attached", timeout: 8000 });
+        uploadModalOpen = true;
+      } catch {
+        log(`upload modal did not open (attempt ${attempt + 1})`);
+      }
+    }
+    if (!uploadModalOpen) {
+      return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     await page.waitForTimeout(1000);
