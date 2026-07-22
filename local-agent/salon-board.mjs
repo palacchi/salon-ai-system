@@ -48,6 +48,9 @@ export async function fillSalonBoardStyleForm(input, credentials) {
   const browser = await chromium.launch({ headless: false });
   log("browser launched");
   const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "webdriver", { get: () => false });
+  });
 
   try {
     const imageResPromise = fetch(input.imageUrl);
