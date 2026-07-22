@@ -114,21 +114,14 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     await page.waitForTimeout(1500);
-    const registerClickResult = await page.evaluate(() => {
-      const candidates = Array.from(document.querySelectorAll("a,button")).filter(
-        (el) => el.textContent.trim() === "登録する"
-      );
-      const visible = candidates.filter((el) => el.offsetParent !== null);
-      const target = visible[0] ?? candidates[0];
-      target?.click();
-      return {
-        totalCandidates: candidates.length,
-        visibleCandidates: visible.length,
-        clicked: !!target,
-        targetDisabled: target ? target.className.includes("is_disable") : null,
-      };
-    });
-    log(`register button click: ${JSON.stringify(registerClickResult)}`);
+    const registerBtn = page.getByRole("button", { name: "登録する" });
+    const registerBtnHandle = await registerBtn.elementHandle();
+    if (registerBtnHandle) {
+      await page.evaluate((el) => el.click(), registerBtnHandle);
+      log("register button clicked via role locator");
+    } else {
+      log("register button not found via role locator");
+    }
     await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {
       log("overlay still visible after 15s wait");
     });

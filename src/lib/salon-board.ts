@@ -136,14 +136,18 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
       return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
-    await page.waitForTimeout(1000);
-    await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll("a,button")).find(
-        (el) => el.textContent?.trim() === "登録する" && (el as HTMLElement).offsetParent !== null
-      ) as HTMLElement | undefined;
-      btn?.click();
+    await page.waitForTimeout(1500);
+    const registerBtn = page.getByRole("button", { name: "登録する" });
+    const registerBtnHandle = await registerBtn.elementHandle();
+    if (registerBtnHandle) {
+      await page.evaluate((el) => (el as HTMLElement).click(), registerBtnHandle);
+      log("register button clicked via role locator");
+    } else {
+      log("register button not found via role locator");
+    }
+    await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {
+      log("overlay still visible after 15s wait");
     });
-    await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(500);
     log("image uploaded");
 
