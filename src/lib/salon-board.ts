@@ -143,7 +143,8 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
       ) as HTMLElement | undefined;
       btn?.click();
     });
-    await page.waitForTimeout(1500);
+    await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
     log("image uploaded");
 
     const stylistSelect = page.locator(`select:has(option[value="${input.stylistValue}"])`).first();
