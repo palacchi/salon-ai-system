@@ -343,7 +343,9 @@ async function generatePostContent(
 
 必ず守るルール:
 - 機械的・定型的な言い回しを避け、人間が書いたような自然な日本語にする
-- 絵文字(😊✨💇‍♀️など)と顔文字((^^)/、(◍•ᴗ•◍)、(*'▽')など)の両方を、blog_body・style_description・instagram_text・google_text・line_textの各文章に最低1つずつは使い、楽しく親しみやすい雰囲気を出す。ただし使いすぎず、丁寧な言葉遣いは崩さない。style_name・category・hair_length・recommended_age・menu_text・stylist_nameには絵文字・顔文字を付けない
+- 絵文字(😊✨💇‍♀️など)と顔文字((^^)/、(◍•ᴗ•◍)、(*'▽')など)の両方を、blog_body・instagram_text・google_text・line_textの各文章に最低1つずつは使い、楽しく親しみやすい雰囲気を出す。ただし使いすぎず、丁寧な言葉遣いは崩さない
+- style_descriptionは、SALON BOARDのコメント欄にそのまま登録されるため絵文字(😊✨💇‍♀️など)は一切使わない。顔文字((^^)/、(◍•ᴗ•◍)、(*'▽')など、通常の文字だけで書けるもの)は使ってよい
+- style_name・category・hair_length・recommended_age・menu_text・stylist_nameには絵文字・顔文字を付けない
 - Instagram投稿文・LINE配信文は特に絵文字・顔文字を多めに、明るく楽しい雰囲気にする
 - ブログ本文・Google投稿文は、楽しさを出しつつも、お店の説明として丁寧で読みやすい文章にする
 - 誇大表現(「必ず」「絶対」「日本一」など)は使わない
@@ -389,7 +391,11 @@ ${notes && notes.trim() ? notes : "(メモなし)"}
         description: "実際のスタイリスト一覧の中から1つ選ぶ",
       },
       style_name: { type: "string", maxLength: 30, description: "スタイル名。30文字以内" },
-      style_description: { type: "string", maxLength: 120, description: "スタイルの説明(コメント)。120文字以内" },
+      style_description: {
+        type: "string",
+        maxLength: 120,
+        description: "スタイルの説明(コメント)。120文字以内。絵文字は使わない(SALON BOARDのコメント欄で使用不可のため)",
+      },
       category: { type: "string", enum: ["レディース", "メンズ"], description: "写真から判断する" },
       hair_length: {
         type: "string",

@@ -137,7 +137,8 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
       return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
-    await page.waitForTimeout(1500);
+    log("file set on input, waiting for upload network activity");
+    await page.waitForTimeout(8000);
     const registerBtn = page.getByRole("button", { name: "登録する" });
     const registerBtnHandle = await registerBtn.elementHandle();
     if (registerBtnHandle) {
@@ -149,7 +150,24 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {
       log("overlay still visible after 15s wait");
     });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
+
+    const checkUploadResult = () =>
+      page.evaluate(() => {
+        const idSpan = document.getElementById("FRONT_IMG_ID_ID");
+        return idSpan ? idSpan.textContent!.trim() : "";
+      });
+
+    let imageId = await checkUploadResult();
+    for (let wait = 0; wait < 3 && !imageId; wait++) {
+      log(`image not yet attached, waiting more (retry ${wait + 1})`);
+      await page.waitForTimeout(3000);
+      imageId = await checkUploadResult();
+    }
+    log(`upload result: imageId=${imageId}`);
+    if (!imageId) {
+      return { ok: false, reason: "写真が正しくアップロードされませんでした(画像IDが取得できません)" };
+    }
     log("image uploaded");
 
     const stylistSelect = page.locator(`select:has(option[value="${input.stylistValue}"])`).first();
@@ -198,8 +216,19 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
     await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(2000);
     const resultUrl = page.url();
-    log(`submitted, resulting URL: ${resultUrl}`);
+    const hasValidationError = await page
+      .locator("text=以下の項目をご確認ください")
+      .isVisible()
+      .catch(() => false);
+    log(`submitted, resulting URL: ${resultUrl}, validationError: ${hasValidationError}`);
     const resultScreenshotBuffer = await page.screenshot({ fullPage: true });
+    if (hasValidationError) {
+      return {
+        ok: false,
+        reason: "SALON BOARD側の入力チェックでエラーになりました(画面のスクリーンショットを確認してください)",
+        screenshotBase64: resultScreenshotBuffer.toString("base64"),
+      };
+    }
     return { ok: true, submitted: true, resultUrl, screenshotBase64: resultScreenshotBuffer.toString("base64") };
   } catch (err) {
     const screenshotBuffer = await page.screenshot({ fullPage: true }).catch(() => null);

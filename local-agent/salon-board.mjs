@@ -125,7 +125,6 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
     log("file set on input, waiting for upload network activity");
     await page.waitForTimeout(8000);
-    await page.screenshot({ path: "debug-before-register.png", fullPage: true });
 
     const errorDialogText = await page.evaluate(() => {
       const el = Array.from(document.querySelectorAll("*")).find(
@@ -155,20 +154,26 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     });
     await page.waitForTimeout(1000);
 
-    const uploadResultDiag = await page.evaluate(() => {
-      const idSpan = document.getElementById("FRONT_IMG_ID_ID");
-      const imgEl = document.getElementById("FRONT_IMG_ID_IMG");
-      const errEl = Array.from(document.querySelectorAll("*")).find(
-        (e) => e.children.length === 0 && e.textContent?.includes("通信に失敗しました")
-      );
-      return {
-        imageId: idSpan ? idSpan.textContent.trim() : null,
-        imgSrc: imgEl ? imgEl.src : null,
-        errorAfterRegister: errEl ? errEl.textContent.trim() : null,
-      };
-    });
+    const checkUploadResult = () =>
+      page.evaluate(() => {
+        const idSpan = document.getElementById("FRONT_IMG_ID_ID");
+        const imgEl = document.getElementById("FRONT_IMG_ID_IMG");
+        return {
+          imageId: idSpan ? idSpan.textContent.trim() : "",
+          imgSrc: imgEl ? imgEl.src : null,
+        };
+      });
+
+    let uploadResultDiag = await checkUploadResult();
+    for (let wait = 0; wait < 3 && !uploadResultDiag.imageId; wait++) {
+      log(`image not yet attached, waiting more (retry ${wait + 1})`);
+      await page.waitForTimeout(3000);
+      uploadResultDiag = await checkUploadResult();
+    }
     log(`upload result diagnostics: ${JSON.stringify(uploadResultDiag)}`);
-    await page.screenshot({ path: "debug-after-register.png", fullPage: true });
+    if (!uploadResultDiag.imageId) {
+      return { ok: false, reason: "写真が正しくアップロードされませんでした(画像IDが取得できません)" };
+    }
     log("image uploaded");
 
     const stylistSelect = page.locator(`select:has(option[value="${input.stylistValue}"])`).first();
@@ -217,8 +222,19 @@ export async function fillSalonBoardStyleForm(input, credentials) {
     await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
     await page.waitForTimeout(2000);
     const resultUrl = page.url();
-    log(`submitted, resulting URL: ${resultUrl}`);
+    const hasValidationError = await page
+      .locator("text=以下の項目をご確認ください")
+      .isVisible()
+      .catch(() => false);
+    log(`submitted, resulting URL: ${resultUrl}, validationError: ${hasValidationError}`);
     const resultScreenshotBuffer = await page.screenshot({ fullPage: true });
+    if (hasValidationError) {
+      return {
+        ok: false,
+        reason: "SALON BOARD側の入力チェックでエラーになりました(画面のスクリーンショットを確認してください)",
+        screenshotBuffer: resultScreenshotBuffer,
+      };
+    }
     return { ok: true, submitted: true, resultUrl, screenshotBuffer: resultScreenshotBuffer };
   } catch (err) {
     const screenshotBuffer = await page.screenshot({ fullPage: true }).catch(() => null);

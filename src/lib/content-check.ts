@@ -50,6 +50,8 @@ const SALON_BOARD_LENGTH_LIMITS: Record<string, number> = {
   menu_text: 50,
 };
 
+const EMOJI_REGEX = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️]/u;
+
 export function checkGeneratedContent(content: ContentCheckTarget): ContentCheckResult {
   const issues: string[] = [];
 
@@ -58,6 +60,11 @@ export function checkGeneratedContent(content: ContentCheckTarget): ContentCheck
     if (typeof value === "string" && value.length > limit) {
       issues.push(`${field}がSALON BOARDの文字数上限(${limit}文字)を超えています(現在${value.length}文字)`);
     }
+  }
+
+  const styleDescription = content.style_description;
+  if (typeof styleDescription === "string" && EMOJI_REGEX.test(styleDescription)) {
+    issues.push("style_descriptionに絵文字が含まれています(SALON BOARDのコメント欄では使用できません)");
   }
 
   const category = content.category;
