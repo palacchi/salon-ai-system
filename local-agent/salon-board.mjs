@@ -113,15 +113,27 @@ export async function fillSalonBoardStyleForm(input, credentials) {
       return { ok: false, reason: "画像アップロード欄のポップアップが開きませんでした" };
     }
     await fileInput.setInputFiles({ name: "style.jpg", mimeType: "image/jpeg", buffer: imageBuffer });
-    await page.waitForTimeout(1000);
-    await page.evaluate(() => {
-      const btn = Array.from(document.querySelectorAll("a,button")).find(
-        (el) => el.textContent.trim() === "登録する" && el.offsetParent !== null
+    await page.waitForTimeout(1500);
+    const registerClickResult = await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll("a,button")).filter(
+        (el) => el.textContent.trim() === "登録する"
       );
-      btn?.click();
+      const visible = candidates.filter((el) => el.offsetParent !== null);
+      const target = visible[0] ?? candidates[0];
+      target?.click();
+      return {
+        totalCandidates: candidates.length,
+        visibleCandidates: visible.length,
+        clicked: !!target,
+        targetDisabled: target ? target.className.includes("is_disable") : null,
+      };
     });
-    await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {});
+    log(`register button click: ${JSON.stringify(registerClickResult)}`);
+    await page.waitForSelector(".jscImageUploaderOverlay", { state: "hidden", timeout: 15000 }).catch(() => {
+      log("overlay still visible after 15s wait");
+    });
     await page.waitForTimeout(500);
+    await page.screenshot({ path: "debug-after-register.png", fullPage: true });
     log("image uploaded");
 
     const stylistSelect = page.locator(`select:has(option[value="${input.stylistValue}"])`).first();
