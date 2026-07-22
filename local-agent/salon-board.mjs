@@ -203,7 +203,23 @@ export async function fillSalonBoardStyleForm(input, credentials) {
 
     const screenshotBuffer = await page.screenshot({ fullPage: true });
     log("screenshot taken");
-    return { ok: true, screenshotBuffer };
+
+    if (!input.submit) {
+      return { ok: true, submitted: false, screenshotBuffer };
+    }
+
+    log("submitting for real (登録 button)");
+    await page.evaluate(() => {
+      const imgs = document.querySelectorAll('img[alt="登録"]');
+      const last = imgs[imgs.length - 1];
+      last.closest("a").click();
+    });
+    await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    const resultUrl = page.url();
+    log(`submitted, resulting URL: ${resultUrl}`);
+    const resultScreenshotBuffer = await page.screenshot({ fullPage: true });
+    return { ok: true, submitted: true, resultUrl, screenshotBuffer: resultScreenshotBuffer };
   } catch (err) {
     const screenshotBuffer = await page.screenshot({ fullPage: true }).catch(() => null);
     return {

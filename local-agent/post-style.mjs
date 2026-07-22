@@ -22,8 +22,9 @@ const env = Object.fromEntries(
 );
 
 const postId = process.argv[2];
+const submit = process.argv.includes("--submit");
 if (!postId) {
-  console.error("使い方: node post-style.mjs <postId>");
+  console.error("使い方: node post-style.mjs <postId> [--submit]");
   process.exit(1);
 }
 
@@ -74,7 +75,7 @@ async function main() {
     couponId = menu.salon_board_coupon_id;
   }
 
-  console.log("SALON BOARDへの入力を開始します(登録ボタンは押しません)...");
+  console.log(submit ? "SALON BOARDへの入力を開始します(登録ボタンを押して実際に投稿します)..." : "SALON BOARDへの入力を開始します(登録ボタンは押しません)...");
   const result = await fillSalonBoardStyleForm(
     {
       imageUrl: post.image_url,
@@ -85,6 +86,7 @@ async function main() {
       hairLength: post.hair_length,
       menuText: post.menu_text,
       couponId,
+      submit,
     },
     { loginId: env.SALON_BOARD_LOGIN_ID, password: env.SALON_BOARD_PASSWORD }
   );
@@ -97,7 +99,12 @@ async function main() {
   }
 
   if (result.ok) {
-    console.log("\n=== 結果: 成功(入力のみ、登録は未実行) ===");
+    if (result.submitted) {
+      console.log("\n=== 結果: 成功(実際に投稿しました) ===");
+      console.log("投稿後のURL:", result.resultUrl);
+    } else {
+      console.log("\n=== 結果: 成功(入力のみ、登録は未実行) ===");
+    }
   } else {
     console.error("\n=== 結果: 失敗 ===");
     console.error(result.reason);

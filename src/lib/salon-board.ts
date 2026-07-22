@@ -40,10 +40,11 @@ export type SalonBoardStyleInput = {
   hairLength: string;
   menuText: string;
   couponId: string | null;
+  submit?: boolean;
 };
 
 export type SalonBoardFillResult =
-  | { ok: true; screenshotBase64: string }
+  | { ok: true; submitted: boolean; resultUrl?: string; screenshotBase64: string }
   | { ok: false; reason: string; screenshotBase64?: string };
 
 function resolveHairLengthCode(category: "レディース" | "メンズ", hairLength: string): string | null {
@@ -183,7 +184,23 @@ export async function fillSalonBoardStyleForm(input: SalonBoardStyleInput): Prom
 
     const screenshotBuffer = await page.screenshot({ fullPage: true });
     log("screenshot taken");
-    return { ok: true, screenshotBase64: screenshotBuffer.toString("base64") };
+
+    if (!input.submit) {
+      return { ok: true, submitted: false, screenshotBase64: screenshotBuffer.toString("base64") };
+    }
+
+    log("submitting for real (登録 button)");
+    await page.evaluate(() => {
+      const imgs = document.querySelectorAll('img[alt="登録"]');
+      const last = imgs[imgs.length - 1];
+      (last.closest("a") as HTMLElement).click();
+    });
+    await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
+    await page.waitForTimeout(2000);
+    const resultUrl = page.url();
+    log(`submitted, resulting URL: ${resultUrl}`);
+    const resultScreenshotBuffer = await page.screenshot({ fullPage: true });
+    return { ok: true, submitted: true, resultUrl, screenshotBase64: resultScreenshotBuffer.toString("base64") };
   } catch (err) {
     const screenshotBuffer = await page.screenshot({ fullPage: true }).catch(() => null);
     return {
